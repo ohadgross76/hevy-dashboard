@@ -7,6 +7,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  if (req.cookies.get("coach_auth")?.value !== process.env.COACH_PIN) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     console.log("ANTHROPIC_API_KEY present:", !!apiKey, apiKey?.substring(0, 12));

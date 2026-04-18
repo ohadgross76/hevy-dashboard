@@ -164,7 +164,77 @@ function MessageBubble({ msg }: { msg: Message }) {
   );
 }
 
+function PinGate({ onUnlock }: { onUnlock: () => void }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(false);
+    const res = await fetch("/api/coach-auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    setLoading(false);
+    if (res.ok) {
+      onUnlock();
+    } else {
+      setError(true);
+      setPin("");
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full" style={{ background: "var(--background)" }}>
+      <div
+        className="w-full max-w-xs rounded-2xl p-8 flex flex-col items-center gap-5"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+      >
+        <div
+          className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl font-black"
+          style={{ background: "var(--accent)" }}
+        >
+          H
+        </div>
+        <div className="text-center">
+          <h2 className="text-lg font-bold text-white">Coach Access</h2>
+          <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>Enter your PIN to continue</p>
+        </div>
+        <form onSubmit={submit} className="w-full flex flex-col gap-3">
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={8}
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            placeholder="PIN"
+            className="w-full rounded-xl px-4 py-3 text-center text-lg font-bold text-white tracking-widest focus:outline-none focus:ring-2"
+            style={{
+              background: "var(--surface-raised)",
+              border: `1px solid ${error ? "#ef4444" : "var(--border)"}`,
+            }}
+            autoFocus
+          />
+          {error && <p className="text-xs text-center text-red-400">Incorrect PIN, try again</p>}
+          <button
+            type="submit"
+            disabled={!pin || loading}
+            className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-40"
+            style={{ background: "var(--accent)" }}
+          >
+            {loading ? "Checking…" : "Unlock"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function CoachPage() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -177,8 +247,15 @@ export default function CoachPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    fetch("/api/coach-auth").then((r) => setAuthed(r.ok));
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  if (authed === null) return null;
+  if (!authed) return <PinGate onUnlock={() => setAuthed(true)} />;
 
   async function send() {
     const text = input.trim();
