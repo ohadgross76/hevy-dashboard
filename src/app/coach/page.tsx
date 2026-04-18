@@ -31,6 +31,7 @@ function RoutineCard({ json }: { json: string }) {
   const [state, setState] = useState<"idle" | "naming" | "saving" | "saved" | "error">("idle");
   const [title, setTitle] = useState("");
   const [unmatched, setUnmatched] = useState<string[]>([]);
+  const [errorMsg, setErrorMsg] = useState("");
 
   let routine: RoutineBlock;
   try {
@@ -56,6 +57,7 @@ function RoutineCard({ json }: { json: string }) {
       setUnmatched(data.unmatched ?? []);
       setState("saved");
     } else {
+      setErrorMsg(data.error ?? `HTTP ${res.status}`);
       setState("error");
     }
   }
@@ -106,7 +108,7 @@ function RoutineCard({ json }: { json: string }) {
             {state === "saved" ? (
               <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>✓ In Hevy</span>
             ) : state === "error" ? (
-              <span className="text-xs text-red-400">Failed — try again</span>
+              <span className="text-xs text-red-400" title={errorMsg}>Failed: {errorMsg}</span>
             ) : (
               <button
                 onClick={startSave}
