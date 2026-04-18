@@ -233,15 +233,16 @@ function PinGate({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
+const STORAGE_KEY = "coach_messages";
+const WELCOME: Message = {
+  role: "assistant",
+  content:
+    "Hey Ohad! I'm your training coach. I have full context of your routines, workout history, and your current plan.\n\nAsk me anything — or say \"build next week's routines\" and I'll generate them ready to save.",
+};
+
 export default function CoachPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "Hey Ohad! I'm your training coach. I have full context of your routines, workout history, and your current plan.\n\nAsk me anything — or say \"build next week's routines\" and I'll generate them ready to save.",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -250,9 +251,29 @@ export default function CoachPage() {
     fetch("/api/coach-auth").then((r) => setAuthed(r.ok));
   }, []);
 
+  // Restore history from localStorage once authenticated
+  useEffect(() => {
+    if (!authed) return;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) setMessages(JSON.parse(stored));
+    } catch {}
+  }, [authed]);
+
+  // Persist messages to localStorage on every update
+  useEffect(() => {
+    if (!authed) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages, authed]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  function clearChat() {
+    setMessages([WELCOME]);
+    localStorage.removeItem(STORAGE_KEY);
+  }
 
   if (authed === null) return null;
   if (!authed) return <PinGate onUnlock={() => setAuthed(true)} />;
@@ -308,11 +329,20 @@ export default function CoachPage() {
 
   return (
     <div className="flex flex-col h-screen md:h-screen" style={{ height: "calc(100dvh - 60px)" }}>
-      <div className="px-4 py-3" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-        <h1 className="text-base font-bold text-white">Training Coach</h1>
-        <p className="text-xs" style={{ color: "var(--muted)" }}>
-          Powered by Claude Sonnet · knows your Hevy data live
-        </p>
+      <div className="flex items-center justify-between px-4 py-3" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+        <div>
+          <h1 className="text-base font-bold text-white">Training Coach</h1>
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Powered by Claude Sonnet · knows your Hevy data live
+          </p>
+        </div>
+        <button
+          onClick={clearChat}
+          className="text-xs px-3 py-1.5 rounded-lg transition-colors hover:text-white"
+          style={{ color: "var(--muted)", border: "1px solid var(--border)" }}
+        >
+          Clear chat
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4" style={{ background: "var(--background)" }}>
