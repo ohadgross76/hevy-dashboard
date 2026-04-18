@@ -1,4 +1,5 @@
 import { hevy, Workout } from "@/lib/hevy";
+import WorkoutCalendar from "@/components/WorkoutCalendar";
 
 export const revalidate = 60;
 
@@ -95,123 +96,6 @@ function formatDuration(start: string, end: string) {
 
 // ─── Calendar ────────────────────────────────────────────────────────────────
 
-function WorkoutCalendar({ workouts }: { workouts: Workout[] }) {
-  const workoutDates = new Set(
-    workouts.map((w) => {
-      const d = new Date(w.start_time);
-      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    })
-  );
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Align to Monday of current week
-  const dow = today.getDay();
-  const daysFromMon = (dow + 6) % 7;
-  const thisMon = new Date(today);
-  thisMon.setDate(today.getDate() - daysFromMon);
-
-  // Start 15 weeks back = 16 weeks total
-  const startMon = new Date(thisMon);
-  startMon.setDate(thisMon.getDate() - 15 * 7);
-
-  // Build weeks (each week = Mon..Sun column)
-  const WEEKS = 16;
-  const weeks: { date: Date; hasWorkout: boolean; isFuture: boolean; isToday: boolean }[][] = [];
-  const cursor = new Date(startMon);
-
-  for (let w = 0; w < WEEKS; w++) {
-    const week = [];
-    for (let d = 0; d < 7; d++) {
-      const date = new Date(cursor);
-      const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-      week.push({
-        date,
-        hasWorkout: workoutDates.has(key),
-        isFuture: date > today,
-        isToday: date.getTime() === today.getTime(),
-      });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    weeks.push(week);
-  }
-
-  // Month labels
-  const monthLabels: (string | null)[] = weeks.map((week, wi) => {
-    const m = week[0].date.getMonth();
-    const prev = wi > 0 ? weeks[wi - 1][0].date.getMonth() : -1;
-    return m !== prev ? week[0].date.toLocaleDateString("en-US", { month: "short" }) : null;
-  });
-
-  const DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", "Sun"];
-
-  return (
-    <div style={{ overflowX: "auto" }}>
-      {/* Month labels row */}
-      <div style={{ display: "flex", marginLeft: 30, marginBottom: 4, gap: 3 }}>
-        {weeks.map((_, wi) => (
-          <div
-            key={wi}
-            style={{ width: 14, fontSize: 10, color: "var(--muted)", whiteSpace: "nowrap", overflow: "visible" }}
-          >
-            {monthLabels[wi] ?? ""}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "flex" }}>
-        {/* Day labels */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginRight: 6, paddingTop: 1 }}>
-          {DAY_LABELS.map((label, i) => (
-            <div
-              key={i}
-              style={{ height: 14, fontSize: 10, color: "var(--muted)", lineHeight: "14px", textAlign: "right", width: 24 }}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-
-        {/* Grid */}
-        <div style={{ display: "flex", gap: 3 }}>
-          {weeks.map((week, wi) => (
-            <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {week.map((day, di) => (
-                <div
-                  key={di}
-                  title={day.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: 3,
-                    flexShrink: 0,
-                    background: day.isFuture
-                      ? "transparent"
-                      : day.hasWorkout
-                      ? "var(--accent)"
-                      : "var(--surface-raised)",
-                    border: day.isToday ? "1.5px solid var(--accent)" : "none",
-                    opacity: day.isFuture ? 0 : 1,
-                  }}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-        <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--surface-raised)" }} />
-        <span style={{ fontSize: 11, color: "var(--muted)" }}>Rest</span>
-        <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--accent)", marginLeft: 10 }} />
-        <span style={{ fontSize: 11, color: "var(--muted)" }}>Workout</span>
-      </div>
-    </div>
-  );
-}
-
 // ─── Muscle chart ─────────────────────────────────────────────────────────────
 
 function MuscleChart({ stats }: { stats: { group: string; count: number; pct: number }[] }) {
@@ -304,6 +188,7 @@ export default async function DashboardPage() {
   const thisWeek = workoutsThisWeek(workouts);
   const streak = getStreak(workouts);
   const muscleStats = getMuscleStats(workouts);
+  const workoutDates = workouts.map((w) => w.start_time.slice(0, 10));
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -325,8 +210,8 @@ export default async function DashboardPage() {
 
       {/* Calendar */}
       <div className="mb-6">
-        <Section title="Workout Calendar" subtitle="Last 16 weeks">
-          <WorkoutCalendar workouts={workouts} />
+        <Section title="Workout Calendar">
+          <WorkoutCalendar workoutDates={workoutDates} />
         </Section>
       </div>
 
