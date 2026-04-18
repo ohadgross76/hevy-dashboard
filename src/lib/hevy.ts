@@ -160,6 +160,31 @@ export const hevy = {
   getAccount: () =>
     hevyFetch<Account>("/account"),
 
+  createRoutine: (payload: {
+    routine: {
+      title: string;
+      folder_id?: number | null;
+      notes?: string;
+      exercises: {
+        exercise_template_id: string;
+        superset_id?: number | null;
+        notes?: string;
+        sets: {
+          type: string;
+          weight_kg?: number | null;
+          reps?: number | null;
+          distance_meters?: null;
+          duration_seconds?: null;
+          custom_metric?: null;
+        }[];
+      }[];
+    };
+  }) =>
+    hevyFetch<{ routine: Routine }>("/routines", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   getAllExerciseTemplates: async (): Promise<ExerciseTemplate[]> => {
     const PAGE_SIZE = 10;
     const first = await hevyFetch<ExerciseTemplatesResponse>(`/exercise_templates?page=1&pageSize=${PAGE_SIZE}`);

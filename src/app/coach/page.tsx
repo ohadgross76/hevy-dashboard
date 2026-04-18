@@ -28,8 +28,9 @@ function parseRoutineBlocks(text: string): { segments: { type: "text" | "routine
 }
 
 function RoutineCard({ json }: { json: string }) {
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [state, setState] = useState<"idle" | "naming" | "saving" | "saved" | "error">("idle");
+  const [title, setTitle] = useState("");
+  const [unmatched, setUnmatched] = useState<string[]>([]);
 
   let routine: RoutineBlock;
   try {
@@ -38,15 +39,25 @@ function RoutineCard({ json }: { json: string }) {
     return <pre className="text-xs text-red-400 p-2">{json}</pre>;
   }
 
-  async function save() {
-    setSaving(true);
-    await fetch("/api/suggested-routines", {
+  function startSave() {
+    setTitle(routine.title);
+    setState("naming");
+  }
+
+  async function confirmSave() {
+    setState("saving");
+    const res = await fetch("/api/hevy-routines", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(routine),
+      body: JSON.stringify({ title: title.trim() || routine.title, exercises: routine.exercises }),
     });
-    setSaving(false);
-    setSaved(true);
+    const data = await res.json();
+    if (res.ok) {
+      setUnmatched(data.unmatched ?? []);
+      setState("saved");
+    } else {
+      setState("error");
+    }
   }
 
   return (
@@ -55,23 +66,64 @@ function RoutineCard({ json }: { json: string }) {
       style={{ border: "1px solid var(--accent)", background: "var(--surface)" }}
     >
       <div
-        className="flex items-center justify-between px-4 py-2.5"
+        className="px-4 py-2.5"
         style={{ background: "#2a1a0e", borderBottom: "1px solid var(--border)" }}
       >
-        <div>
-          <span className="font-semibold text-white text-sm">{routine.title}</span>
-          <span className="ml-2 text-xs" style={{ color: "var(--accent)" }}>
-            {routine.day} · {routine.week}
-          </span>
-        </div>
-        <button
-          onClick={save}
-          disabled={saved || saving}
-          className="text-xs px-3 py-1 rounded-lg font-medium transition-opacity disabled:opacity-50"
-          style={{ background: "var(--accent)", color: "white" }}
-        >
-          {saved ? "✓ Saved" : saving ? "Saving…" : "Save to Routines"}
-        </button>
+        {state === "naming" ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && confirmSave()}
+              className="flex-1 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none"
+              style={{ background: "var(--surface-raised)", border: "1px solid var(--border)" }}
+              placeholder="Routine title…"
+            />
+            <button
+              onClick={confirmSave}
+              className="text-xs px-3 py-1.5 rounded-lg font-medium shrink-0"
+              style={{ background: "var(--accent)", color: "white" }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setState("idle")}
+              className="text-xs px-2 py-1.5 rounded-lg"
+              style={{ color: "var(--muted)" }}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-white text-sm">{routine.title}</span>
+              <span className="ml-2 text-xs" style={{ color: "var(--accent)" }}>
+                {routine.day} · {routine.week}
+              </span>
+            </div>
+            {state === "saved" ? (
+              <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>✓ In Hevy</span>
+            ) : state === "error" ? (
+              <span className="text-xs text-red-400">Failed — try again</span>
+            ) : (
+              <button
+                onClick={startSave}
+                disabled={state === "saving"}
+                className="text-xs px-3 py-1 rounded-lg font-medium transition-opacity disabled:opacity-50"
+                style={{ background: "var(--accent)", color: "white" }}
+              >
+                {state === "saving" ? "Saving…" : "Save to Hevy"}
+              </button>
+            )}
+          </div>
+        )}
+        {state === "saved" && unmatched.length > 0 && (
+          <p className="text-xs mt-1.5" style={{ color: "var(--muted)" }}>
+            Skipped (not found in Hevy): {unmatched.join(", ")}
+          </p>
+        )}
       </div>
       <table className="w-full text-xs">
         <thead>
