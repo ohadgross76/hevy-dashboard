@@ -41,7 +41,13 @@ export async function POST(req: NextRequest) {
   try {
     const { title, exercises } = await req.json();
 
-    const templates = await hevy.getAllExerciseTemplates();
+    const [templates, folders] = await Promise.all([
+      hevy.getAllExerciseTemplates(),
+      hevy.getRoutineFolders(),
+    ]);
+
+    const coachFolder = folders.find((f) => f.title.toLowerCase() === "coach");
+    const folderId = coachFolder?.id ?? null;
 
     const mapped = exercises.map((ex: { name: string; sets: { reps: number; weight_kg?: number }[] }) => {
       const templateId = findTemplateId(ex.name, templates);
@@ -77,7 +83,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await hevy.createRoutine({
-      routine: { title, folder_id: null, notes: "", exercises: validExercises },
+      routine: { title, folder_id: folderId, notes: "", exercises: validExercises },
     });
 
     return NextResponse.json({ ok: true, routine: result, unmatched });
