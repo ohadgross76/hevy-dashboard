@@ -380,7 +380,7 @@ export default function CoachPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen md:h-screen" style={{ height: "calc(100dvh - 60px)" }}>
+    <div className="flex flex-col" style={{ height: "calc(100dvh - 52px)" }}>
       <div className="flex items-center justify-between px-4 py-3" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
         <div>
           <h1 className="text-base font-bold text-white">Training Coach</h1>

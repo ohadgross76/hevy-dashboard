@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
+import MobileNav from "@/components/MobileNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -104,32 +105,13 @@ export default function RootLayout({
           </div>
         </aside>
 
-        {/* ── Main content ── */}
-        <div className="flex-1 min-w-0 overflow-y-auto pb-20 md:pb-0">
+        {/* ── Mobile hamburger nav ── */}
+        <MobileNav />
+
+        {/* ── Main content (pt-14 on mobile for the fixed header) ── */}
+        <div className="flex-1 min-w-0 overflow-y-auto pt-[52px] md:pt-0">
           {children}
         </div>
-
-        {/* ── Mobile bottom tab bar ── */}
-        <nav
-          className="md:hidden fixed bottom-0 left-0 right-0 flex items-center justify-around px-2 z-50"
-          style={{
-            background: "var(--surface)",
-            borderTop: "1px solid var(--border)",
-            height: 60,
-            paddingBottom: "env(safe-area-inset-bottom)",
-          }}
-        >
-          {NAV_ITEMS.map(({ href, label, icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-colors text-gray-500 hover:text-white"
-            >
-              <span style={{ color: "var(--accent)" }}>{icon}</span>
-              <span className="text-xs font-medium">{label}</span>
-            </Link>
-          ))}
-        </nav>
 
       </body>
     </html>
