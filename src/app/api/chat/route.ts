@@ -11,15 +11,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    console.log("ANTHROPIC_API_KEY present:", !!apiKey, apiKey?.substring(0, 12));
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const { messages } = await req.json();
 
-    const [workoutsData, routines, exerciseTemplates] = await Promise.all([
+    // Fetch only what's needed — workouts + routines (fast, 2 parallel calls)
+    const [workoutsData, routines] = await Promise.all([
       hevy.getWorkouts(1, 5),
       hevy.getAllRoutines(),
-      hevy.getAllExerciseTemplates(),
     ]);
 
     const recentWorkouts = workoutsData.workouts.map((w) => {
@@ -37,31 +35,17 @@ export async function POST(req: NextRequest) {
 
     const hevyContext = `### Recent Workouts (last 5)\n${recentWorkouts}\n\n### Current Routines\n${routineSummary}`;
 
-    // Group exercise templates by primary muscle group, exclude custom ones
-    const byMuscle = new Map<string, string[]>();
-    for (const t of exerciseTemplates) {
-      if (t.is_custom) continue;
-      const group = t.primary_muscle_group || "Other";
-      if (!byMuscle.has(group)) byMuscle.set(group, []);
-      byMuscle.get(group)!.push(t.title);
-    }
-    const exerciseLibrary = Array.from(byMuscle.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([group, names]) => `**${group}**: ${names.join(", ")}`)
-      .join("\n");
-
     const { TransformStream } = globalThis;
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
-    // Run streaming in background
     (async () => {
       try {
         const stream = client.messages.stream({
           model: "claude-sonnet-4-6",
           max_tokens: 2048,
-          system: buildSystemPrompt(hevyContext, exerciseLibrary),
+          system: buildSystemPrompt(hevyContext),
           messages,
         });
         for await (const chunk of stream) {
