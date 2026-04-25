@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  uiOnly?: boolean; // never sent to the API
 }
 
 interface RoutineBlock {
@@ -290,6 +291,7 @@ function PinGate({ onUnlock }: { onUnlock: () => void }) {
 const STORAGE_KEY = "coach_messages";
 const WELCOME: Message = {
   role: "assistant",
+  uiOnly: true,
   content:
     "Hey Ohad! I'm your training coach. I have full context of your routines, workout history, and your current plan.\n\nAsk me anything — or say \"build next week's routines\" and I'll generate them ready to save.",
 };
@@ -350,7 +352,9 @@ export default function CoachPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: newMessages
+            .filter((m) => !m.uiOnly && m.content.trim() !== "")
+            .map((m) => ({ role: m.role, content: m.content })),
         }),
       });
 
@@ -373,7 +377,7 @@ export default function CoachPage() {
     } catch {
       setMessages((prev) => {
         const updated = [...prev];
-        updated[updated.length - 1] = { role: "assistant", content: "Something went wrong. Please try again." };
+        updated[updated.length - 1] = { role: "assistant", content: "Something went wrong. Please try again.", uiOnly: true };
         return updated;
       });
     } finally {
